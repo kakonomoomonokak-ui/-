@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>席替えアプリ（改善版）</title>
+  <style>
+    :root {
+      --primary: #4a90e2;
+      --primary-hover: #357abd;
+      --bg-color: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --disabled-seat: #e0e0e0;
+      --fixed-seat: #fff3cd;
+      --border-color: #cccccc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", MeiRyo, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+
+    .tabs-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border-bottom: 2px solid var(--primary);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background-color: #e0e0e0;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .add-tab-btn {
+      padding: 8px 15px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+      align-items: center;
+    }
+
+    input[type="text"], select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background-color: var(--primary-hover); }
+    .btn-danger { background-color: #dc3545; }
+    .btn-danger:hover { background-color: #c82333; }
+    .btn-success { background-color: #28a745; }
+    .btn-success:hover { background-color: #218838; }
+
+    .student-list {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #f0f0f0;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .student-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 8px;
+    }
+
+    .student-item:last-child { border-bottom: none; }
+
+    .student-name-input {
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 4px 6px;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      width: 120px;
+    }
+
+    .student-name-input:hover, .student-name-input:focus {
+      border-color: var(--border-color);
+      background: #fff;
+    }
+
+    .student-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-delete {
+      border: none;
+      background: none;
+      color: #dc3545;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    /* NGペアリスト */
+    .ng-list {
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid #f0f0f0;
+      border-radius: 5px;
+      padding: 5px;
+    }
+
+    .ng-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      background: #fff0f0;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+
+    /* 席レイアウト (6x6) */
+    .blackboard {
+      background-color: #2e5b47;
+      color: white;
+      text-align: center;
+      padding: 8px;
+      border-radius: 5px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      letter-spacing: 2px;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .seat {
+aspect-ratio: 1;
+      border: 2px solid var(--border-color);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background-color: white;
+      text-align: center;
+      padding: 2px;
+      user-select: none;
+      word-break: break-all;
+      position: relative;
+    }
+
+    .seat.disabled {
+      background-color: var(--disabled-seat);
+      border-color: #bbb;
+      color: #888;
+    }
+
+    .seat.fixed {
+      background-color: var(--fixed-seat);
+      border-color: #ffc107;
+    }
+
+    .seat.selected {
+      border-color: #ff5722;
+      box-shadow: 0 0 8px rgba(255, 87, 34, 0.6);
+      background-color: #fff3e0;
+    }
+
+    .seat-subtext {
+      font-size: 0.65rem;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .fixed-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 0.6rem;
+      background: #ffc107;
+      color: #333;
+      padding: 1px 3px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+
+    .instructions {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>席替えシステム</h1>
+
+  <div class="tabs-container" id="tabsContainer">
+    <button class="add-tab-btn" onclick="addNewClass()">＋ クラスを追加</button>
+  </div>
+
+  <div class="content-grid">
+    <!-- 生徒管理 ＆ NGペアエリア -->
+    <div>
+      <div class="card">
+        <h2>
+          生徒登録 
+          <span id="studentCount" style="font-size: 0.9rem; font-weight: normal; color: #666;">(0/36人)</span>
+        </h2>
+
+        <div class="form-group">
+          <input type="text" id="studentNameInput" placeholder="生徒の氏名" maxlength="15">
+          <label class="checkbox-label">
+            <input type="checkbox" id="isStudyCheck"> 得意
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="isEyeCheck"> 目が悪い
+          </label>
+          <button class="btn" onclick="addStudent()">追加</button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #666; margin-bottom: 10px;" id="studyLimitText">
+          ※「得意」は登録人数の半分まで設定可能
+        </div>
+
+        <div class="student-list" id="studentList"></div>
+      </div>
+
+      <!-- NGペア管理カード -->
+      <div class="card">
+        <h2>相性NG設定（離す2人）</h2>
+        <div class="form-group">
+          <select id="ngSelect1"></select>
+          <select id="ngSelect2"></select>
+          <button class="btn btn-danger" onclick="addNgPair()">NGペアに追加</button>
+        </div>
+        <div class="ng-list" id="ngList"></div>
+      </div>
+    </div>
+
+    <!-- 席替えメインエリア -->
+    <div>
+      <div class="card">
+        <h2>席配置</h2>
+        
+        <div class="blackboard">黒 板 (前)</div>
+
+        <div class="grid-container" id="seatGrid"></div>
+
+        <div class="controls">
+          <button class="btn btn-success" style="flex: 2;" onclick="generateSeating()">席替えを実行</button>
+          <button class="btn btn-danger" style="flex: 1;" onclick="deleteCurrentClass()">クラス削除</button>
+        </div>
+
+        <div class="instructions">
+          ・<strong>タップ:</strong> 使用不可席の切り替え / 生成後の2人入れ替え<br>
+          ・<strong>右クリック（長押し）:</strong> 席の「固定（ロック）」を設定/解除<br>
+          ・<strong>NG設定:</strong> 隣同士・前後にしたくないペアを回避して自動配置します。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MAX_STUDENTS = 36;
+    let appData = JSON.parse(localStorage.getItem('seating_app_data')) || {
+      currentClassId: null,
+      classes: []
+    };
+
+    if (appData.classes.length === 0) {
+      const defaultId = Date.now().toString();
+      appData.classes.push({
+        id: defaultId,
+        name: '1組',
+        students: [],
+        disabledSeats: [],
+        fixedSeats: {},
+        ngPairs: [],
+        seatsLayout: Array(36).fill(null)
+      });
+      appData.currentClassId = defaultId;
+      saveData();
+    }
+
+    let selectedSeatIndex = null;
+
+    function saveData() {
+      localStorage.setItem('seating_app_data', JSON.stringify(appData));
+    }
+
+    function getCurrentClass() {
+      const c = appData.classes.find(c => c.id === appData.currentClassId) || appData.classes[0];
+      if (!c.fixedSeats) c.fixedSeats = {};
+      if (!c.ngPairs) c.ngPairs = [];
+      return c;
+    }
+
+    function render() {
+      const currentClass = getCurrentClass();
+      if (!currentClass) return;
+
+      // 1. タブ描画
+      const tabsContainer = document.getElementById('tabsContainer');
+      tabsContainer.innerHTML = '';
+      appData.classes.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = `tab ${c.id === appData.currentClassId ? 'active' : ''}`;
+        btn.textContent = c.name;
+        btn.onclick = () => switchClass(c.id);
+        btn.ondblclick = () => renameClass(c.id);
+        tabsContainer.appendChild(btn);
+      });
+      
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-tab-btn';
+      addBtn.textContent = '＋ クラス追加';
+      addBtn.onclick = addNewClass;
+      tabsContainer.appendChild(addBtn);
+
+      // 2. カウント表示
+      const studentCount = currentClass.students.length;
+      document.getElementById('studentCount').textContent = `(${studentCount}/${MAX_STUDENTS}人)`;
+      
+      const studyCount = currentClass.students.filter(s => s.isStudy).length;
+      const maxStudy = Math.floor(studentCount / 2);
+      document.getElementById('studyLimitText').textContent = 
+        `※「得意」設定上限: ${maxStudy}人まで (現在: ${studyCount}人)`;
+
+      // 3. 生徒リスト描画
+      const studentList = document.getElementById('studentList');
+      studentList.innerHTML = '';
+      currentClass.students.forEach((s, index) => {
+        const item = document.createElement('div');
+        item.className = 'student-item';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'student-name-input';
+        nameInput.value = s.name;
+        nameInput.onchange = (e) => updateStudentName(index, e.target.value);
+
+        const controls = document.createElement('div');
+        controls.className = 'student-controls';
+
+        const studyLabel = document.createElement('label');
+        studyLabel.className = 'checkbox-label';
+        const studyCheck = document.createElement('input');
+        studyCheck.type = 'checkbox';
+        studyCheck.checked = s.isStudy;
+        studyCheck.onchange = (e) => toggleStudentStudy(index, e.target.checked);
+        studyLabel.appendChild(studyCheck);
+        studyLabel.appendChild(document.createTextNode(' 得意'));
+
+        const eyeLabel = document.createElement('label');
+        eyeLabel.className = 'checkbox-label';
+        const eyeCheck = document.createElement('input');
+        eyeCheck.type = 'checkbox';
+        eyeCheck.checked = s.isEye;
+        eyeCheck.onchange = (e) => toggleStudentEye(index, e.target.checked);
+        eyeLabel.appendChild(eyeCheck);
+        eyeLabel.appendChild(document.createTextNode(' 目が悪い'));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '削除';
+        delBtn.onclick = () => removeStudent(index);
+
+        controls.appendChild(studyLabel);
+        controls.appendChild(eyeLabel);
+        controls.appendChild(delBtn);
+
+        item.appendChild(nameInput);
+        item.appendChild(controls);
+        studentList.appendChild(item);
+      });
+
+      // 4. NGペア用セレクトボックス & リスト描画
+      const ngSelect1 = document.getElementById('ngSelect1');
+      const ngSelect2 = document.getElementById('ngSelect2');
+      ngSelect1.innerHTML = '<option value="">生徒1を選択</option>';
+      ngSelect2.innerHTML = '<option value="">生徒2を選択</option>';
+      
+      currentClass.students.forEach(s => {
+        ngSelect1.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+        ngSelect2.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+      });
+
+      const ngList = document.getElementById('ngList');
+      ngList.innerHTML = '';
+      currentClass.ngPairs.forEach((pair, idx) => {
+        const div = document.createElement('div');
+        div.className = 'ng-item';
+        div.innerHTML = `<span>⚠️ ${pair[0]} ＆ ${pair[1]}</span>`;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '解除';
+        delBtn.onclick = () => removeNgPair(idx);
+        div.appendChild(delBtn);
+        ngList.appendChild(div);
+      });
+
+      // 5. 席グリッド描画
+      const seatGrid = document.getElementById('seatGrid');
+      seatGrid.innerHTML = '';
+
+      for (let i = 0; i < 36; i++) {
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        
+        const isDisabled = currentClass.disabledSeats.includes(i);
+        const fixedStudent = currentClass.fixedSeats[i];
+
+        if (isDisabled) {
+          seat.classList.add('disabled');
+          seat.textContent = '未使用';
+        } else if (fixedStudent) {
+          seat.classList.add('fixed');
+          seat.innerHTML = `<span class="fixed-badge">固定</span>${fixedStudent}`;
+        } else {
+          const studentName = currentClass.seatsLayout[i];
+          if (studentName) {
+            seat.textContent = studentName;
+            const student = currentClass.students.find(s => s.name === studentName);
+            if (student) {
+              let tags = [];
+              if (student.isStudy) tags.push('得意');
+              if (student.isEye) tags.push('眼');
+              if (tags.length > 0) {
+                const sub = document.createElement('div');
+                sub.className = 'seat-subtext';
+                sub.textContent = `(${tags.join(',')})`;
+                seat.appendChild(sub);
+              }
+            }
+          } else {
+            seat.textContent = '空席';
+            seat.style.color = '#ccc';
+          }
+        }
+
+        if (selectedSeatIndex === i) {
+          seat.classList.add('selected');
+        }
+
+        seat.onclick = () => handleSeatClick(i);
+        seat.oncontextmenu = (e) => {
+          e.preventDefault();
+          toggleFixedSeat(i);
+        };
+
+        seatGrid.appendChild(seat);
+      }
+    }
+
+    // 固定席の設定
+    function toggleFixedSeat(index) {
+      const currentClass = getCurrentClass();
+      if (currentClass.disabledSeats.includes(index)) return;
+
+      if (currentClass.fixedSeats[index]) {
+        delete currentClass.fixedSeats[index];
+      } else {
+        const availableStudents = currentClass.students.filter(
+          s => !Object.values(currentClass.fixedSeats).includes(s.name)
+        );
+        if (availableStudents.length === 0) {
+          alert('固定できる生徒が登録されていないか、全員既に固定されています。');
+          return;
+        }
+
+        const nameList = availableStudents.map(s => s.name).join('\n');
+        const chosen = prompt(`この席（席番号:${index+1}）に固定する生徒名を入力してください:\n\n${nameList}`);
+        
+        if (chosen && availableStudents.some(s => s.name === chosen.trim())) {
+          currentClass.fixedSeats[index] = chosen.trim();
+        } else if (chosen) {
+          alert('正しい生徒名を入力してください。');
+        }
+      }
+      saveData();
+      render();
+    }
+
+    // NGペア登録
+    function addNgPair() {
+      const currentClass = getCurrentClass();
+      const p1 = document.getElementById('ngSelect1').value;
+      const p2 = document.getElementById('ngSelect2').value;
+
+      if (!p1 || !p2) {
+        alert('2人の生徒を選択してください。');
+        return;
+      }
+      if (p1 === p2) {
+        alert('異なる2人を選択してください。');
+        return;
+      }
+
+      const exists = currentClass.ngPairs.some(
+        pair => (pair[0] === p1 && pair[1] === p2) || (pair[0] === p2 && pair[1] === p1)
+      );
+
+      if (exists) {
+        alert('このNGペアは既に登録されています。');
+        return;
+      }
+
+      currentClass.ngPairs.push([p1, p2]);
+      saveData();
+      render();
+    }
+
+    function removeNgPair(index) {
+      const currentClass = getCurrentClass();
+      currentClass.ngPairs.splice(index, 1);
+      saveData();
+      render();
+    }
+
+    // クラス管理
+    function addNewClass() {
+      const name = prompt('新しいクラス名（またはタスク名）を入力してください:', `新クラス`);
+      if (!name) return;
+      const newId = Date.now().toString();
+      appData.classes.push({
+        id: newId,
+        name: name,
+        students: [],
+        disabledSeats: [],
+        fixedSeats: {},
+        ngPairs: [],
+        seatsLayout: Array(36).fill(null)
+      });
+      appData.currentClassId = newId;
+      saveData();
+      render();
+    }
+
+    function switchClass(id) {
+      appData.currentClassId = id;
+      selectedSeatIndex = null;
+      saveData();
+      render();
+    }
+
+    function renameClass(id) {
+      const target = appData.classes.find(c => c.id === id);
+      if (!target) return;
+      const newName = prompt('クラス名を変更します:', target.name);
+      if (newName) {
+        target.name = newName;
+        saveData();
+        render();
+      }
+    }
+
+    function deleteCurrentClass() {
+      if (appData.classes.length <= 1) {
+        alert('これ以上クラスを削除することはできません。');
+        return;
+      }
+      if (confirm('現在のクラスデータを削除してもよろしいですか？')) {
+        appData.classes = appData.classes.filter(c => c.id !== appData.currentClassId);
+        appData.currentClassId = appData.classes[0].id;
+        saveData();
+        render();
+      }
+    }
+
+    // 生徒管理
+    function addStudent() {
+      const currentClass = getCurrentClass();
+      if (currentClass.students.length >= MAX_STUDENTS) {
+        alert(`登録できる生徒は最大${MAX_STUDENTS}人までです。`);
+        return;
+      }
+
+      const nameInput = document.getElementById('studentNameInput');
+      const name = nameInput.value.trim();
+
+      if (!name) {
+        alert('名前を入力してください。');
+        return;
+      }
+
+      if (currentClass.students.some(s => s.name === name)) {
+        alert('同名の生徒が既に登録されています。');
+        return;
+      }
+
+      const isStudy = document.getElementById('isStudyCheck').checked;
+      const isEye = document.getElementById('isEyeCheck').checked;
+
+      const currentStudyCount = currentClass.students.filter(s => s.isStudy).length;
+      const newTotal = currentClass.students.length + 1;
+      const maxStudyAllowed = Math.floor(newTotal / 2);
+
+      if (isStudy && (currentStudyCount + 1) > maxStudyAllowed) {
+        alert(`「得意」に設定できるのは登録人数の半分（${maxStudyAllowed}人）までです。`);
+        return;
+      }
+
+      currentClass.students.push({ name, isStudy, isEye });
+      
+      nameInput.value = '';
+      document.getElementById('isStudyCheck').checked = false;
+      document.getElementById('isEyeCheck').checked = false;
+
+      saveData();
+      render();
+    }
+
+    function updateStudentName(index, newName) {
+      const currentClass = getCurrentClass();
+      const trimmed = newName.trim();
+
+      if (!trimmed) {
+        alert('名前を空にすることはできません。');
+        render();
+        return;
+      }
+
+      if (currentClass.students.some((s, i) => s.name === trimmed && i !== index)) {
+        alert('同名の生徒が既に存在します。');
+        render();
+        return;
+      }
+
+      const oldName = currentClass.students[index].name;
+      currentClass.students[index].name = trimmed;
+
+      Object.keys(currentClass.fixedSeats).forEach(k => {
+        if (currentClass.fixedSeats[k] === oldName) currentClass.fixedSeats[k] = trimmed;
+      });
+      currentClass.ngPairs = currentClass.ngPairs.map(
+        pair => pair.map(n => n === oldName ? trimmed : n)
+      );
+
+      currentClass.seatsLayout = currentClass.seatsLayout.map(sName => sName === oldName ? trimmed : sName);
+
+      saveData();
+      render();
+    }
+
+    function toggleStudentStudy(index, isChecked) {
+      const currentClass = getCurrentClass();
+      if (isChecked) {
+        const currentStudyCount = currentClass.students.filter((s, i) => s.isStudy && i !== index).length;
+        const maxStudyAllowed = Math.floor(currentClass.students.length / 2);
+
+        if ((currentStudyCount + 1) > maxStudyAllowed) {
+          alert(`「得意」に設定できるのは登録人数の半分（${maxStudyAllowed}人）までです。`);
+          render();
+          return;
+        }
+      }
+
+      currentClass.students[index].isStudy = isChecked;
+      saveData();
+      render();
+    }
+
+    function toggleStudentEye(index, isChecked) {
+      const currentClass = getCurrentClass();
+      currentClass.students[index].isEye = isChecked;
+      saveData();
+      render();
+    }
+
+    function removeStudent(index) {
+      const currentClass = getCurrentClass();
+      const removed = currentClass.students.splice(index, 1)[0];
+      
+      Object.keys(currentClass.fixedSeats).forEach(k => {
+        if (currentClass.fixedSeats[k] === removed.name) delete currentClass.fixedSeats[k];
+      });
+      currentClass.ngPairs = currentClass.ngPairs.filter(
+        pair => pair[0] !== removed.name && pair[1] !== removed.name
+      );
+
+      currentClass.seatsLayout = currentClass.seatsLayout.map(sName => sName === removed.name ? null : sName);
+
+      saveData();
+      render();
+    }
+
+    // 席操作 ＆ 席替えアルゴリズム
+    function handleSeatClick(index) {
+      const currentClass = getCurrentClass();
+      const hasLayout = currentClass.seatsLayout.some(s => s !== null);
+
+      if (!hasLayout) {
+        const dIndex = currentClass.disabledSeats.indexOf(index);
+        if (dIndex > -1) {
+          currentClass.disabledSeats.splice(dIndex, 1);
+        } else {
+          currentClass.disabledSeats.push(index);
+        }
+        saveData();
+        render();
+        return;
+      }
+
+      if (selectedSeatIndex === null) {
+        selectedSeatIndex = index;
+      } else if (selectedSeatIndex === index) {
+        selectedSeatIndex = null;
+      } else {
+        const temp = currentClass.seatsLayout[selectedSeatIndex];
+        currentClass.seatsLayout[selectedSeatIndex] = currentClass.seatsLayout[index];
+        currentClass.seatsLayout[index] = temp;
+        
+        selectedSeatIndex = null;
+        saveData();
+      }
+      render();
+    }
+
+    // 隣接判定チェック（左右・前後）
+    function areAdjacent(seat1, seat2) {
+      const r1 = Math.floor(seat1 / 6), c1 = seat1 % 6;
+      const r2 = Math.floor(seat2 / 6), c2 = seat2 % 6;
+      return (Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1;
+    }
+
+    function generateSeating() {
+      const currentClass = getCurrentClass();
+      const students = [...currentClass.students];
+
+      if (students.length === 0) {
+        alert('生徒を登録してください。');
+        return;
+      }
+
+      const availableSeats = [];
+      for (let i = 0; i < 36; i++) {
+        if (!currentClass.disabledSeats.includes(i)) {
+          availableSeats.push(i);
+        }
+      }
+
+      if (availableSeats.length < students.length) {
+        alert(`使用可能な席数（${availableSeats.length}席）よりも生徒数（${students.length}人）が多いです。`);
+        return;
+      }
+
+      const isEvenCol = (seatIndex) => (seatIndex % 6) % 2 === 0;
+      const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+      let success = false;
+      let finalLayout = Array(36).fill(null);
+
+      // 試行回数を10,0000回に増やして確実に解を見つける
+      for (let attempt = 0; attempt < 100000; attempt++) {
+        const newLayout = Array(36).fill(null);
+        let remainingSeats = [...availableSeats];
+
+        // 1. 固定席の配置
+        Object.keys(currentClass.fixedSeats).forEach(seatIdx => {
+          const idx = parseInt(seatIdx);
+          const sName = currentClass.fixedSeats[idx];
+          newLayout[idx] = sName;
+          if (remainingSeats.includes(idx)) {
+            remainingSeats.splice(remainingSeats.indexOf(idx), 1);
+          }
+        });
+
+        // 未配置の生徒リスト
+        const assignedNames = Object.values(currentClass.fixedSeats);
+        const freeStudents = students.filter(s => !assignedNames.includes(s.name));
+
+        // 生徒をグループ分け
+        let eyeStudents = shuffle(freeStudents.filter(s => s.isEye));
+        let normalStudents = shuffle(freeStudents.filter(s => !s.isEye));
+
+        // 2. 「目が悪い生徒」を前方（1〜2行目: インデックス 0〜17）の空き席へ優先配置
+        const frontSeats = remainingSeats.filter(idx => Math.floor(idx / 6) < 2);
+
+        let eyeFailed = false;
+        for (let student of eyeStudents) {
+          let targetSeats = frontSeats.filter(sIdx => isEvenCol(sIdx) === student.isStudy);
+          if (targetSeats.length === 0) targetSeats = frontSeats;
+          if (targetSeats.length === 0) targetSeats = remainingSeats;
+
+          const chosenSeat = shuffle(targetSeats)[0];
+          if (chosenSeat !== undefined) {
+            newLayout[chosenSeat] = student.name;
+            remainingSeats.splice(remainingSeats.indexOf(chosenSeat), 1);
+            const fIdx = frontSeats.indexOf(chosenSeat);
+            if (fIdx > -1) frontSeats.splice(fIdx, 1);
+          } else {
+            eyeFailed = true;
+            break;
+          }
+        }
+        if (eyeFailed) continue;
+
+        // 3. 一般生徒を全域（後ろも含めて完全ランダム）に配置
+        let normalFailed = false;
+        for (let student of normalStudents) {
+          let targetSeats = remainingSeats.filter(sIdx => isEvenCol(sIdx) === student.isStudy);
+          if (targetSeats.length === 0) targetSeats = remainingSeats;
+
+          const chosenSeat = shuffle(targetSeats)[0];
+          if (chosenSeat !== undefined) {
+            newLayout[chosenSeat] = student.name;
+            remainingSeats.splice(remainingSeats.indexOf(chosenSeat), 1);
+          } else {
+            normalFailed = true;
+            break;
+          }
+        }
+        if (normalFailed) continue;
+
+        // 4. NGペアチェック
+        let hasNgConflict = false;
+        for (const pair of currentClass.ngPairs) {
+          const idx1 = newLayout.indexOf(pair[0]);
+          const idx2 = newLayout.indexOf(pair[1]);
+          if (idx1 !== -1 && idx2 !== -1 && areAdjacent(idx1, idx2)) {
+            hasNgConflict = true;
+            break;
+          }
+        }
+
+        if (!hasNgConflict) {
+          finalLayout = newLayout;
+          success = true;
+          break;
+        }
+      }
+
+      if (!success) {
+        alert('NGペアの条件が非常に厳しいため配置を確定できませんでした。NG設定を少し減らして試してください。');
+        return;
+      }
+
+      currentClass.seatsLayout = finalLayout;
+      selectedSeatIndex = null;
+      saveData();
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
+
+
+   
